@@ -56,12 +56,7 @@ def main():
 
     print("Check whether to load pretrained model weights...")
     if config.pretrained_model_weights_path:
-        pyramidnet_model, ema_pyramidnet_model, start_epoch, best_acc1, optimizer, scheduler = load_state_dict(
-            pyramidnet_model,
-            config.pretrained_model_weights_path,
-            ema_pyramidnet_model,
-            optimizer,
-            scheduler)
+        pyramidnet_model = load_state_dict(pyramidnet_model, config.pretrained_model_weights_path)
         print(f"Loaded `{config.pretrained_model_weights_path}` pretrained model weights successfully.")
     else:
         print("Pretrained model weights not found.")
