@@ -92,7 +92,7 @@ def main():
     print(f"Build `{args.model_arch_name}` model successfully.")
 
     # Load model weights
-    pyramidnet_model, _, _, _, _, _ = load_state_dict(pyramidnet_model, args.model_weights_path)
+    pyramidnet_model = load_state_dict(pyramidnet_model, args.model_weights_path)
     print(f"Load `{args.model_arch_name}` model weights `{os.path.abspath(args.model_weights_path)}` successfully.")
 
     # Start the verification mode of the model.

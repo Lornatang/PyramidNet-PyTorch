@@ -18,6 +18,8 @@ from typing import Any, Dict, TypeVar, Optional
 
 import torch
 from torch import nn
+from torch.nn import Module
+from torch.optim import Optimizer
 
 __all__ = [
     "accuracy", "load_state_dict", "make_directory", "ovewrite_named_param", "make_divisible", "save_checkpoint",
@@ -48,12 +50,10 @@ def load_state_dict(
         model: nn.Module,
         model_weights_path: str,
         ema_model: nn.Module = None,
-        start_epoch: int = None,
-        best_acc1: float = None,
         optimizer: torch.optim.Optimizer = None,
         scheduler: torch.optim.lr_scheduler = None,
         load_mode: str = None,
-) -> [nn.Module, nn.Module, str, int, float, torch.optim.Optimizer, torch.optim.lr_scheduler]:
+) -> tuple[Module, Module, Any, Any, Optimizer | None, Any] | tuple[Module, Any, Any, Optimizer | None, Any] | Module:
     # Load model weights
     checkpoint = torch.load(model_weights_path, map_location=lambda storage, loc: storage)
 
@@ -67,16 +67,22 @@ def load_state_dict(
         # Overwrite the model weights to the current model (base model)
         model_state_dict.update(state_dict)
         model.load_state_dict(model_state_dict)
-        # Load ema model state dict. Extract the fitted model weights
-        ema_model_state_dict = ema_model.state_dict()
-        ema_state_dict = {k: v for k, v in checkpoint["ema_state_dict"].items() if k in ema_model_state_dict.keys()}
-        # Overwrite the model weights to the current model (ema model)
-        ema_model_state_dict.update(ema_state_dict)
-        ema_model.load_state_dict(ema_model_state_dict)
         # Load the optimizer model
         optimizer.load_state_dict(checkpoint["optimizer"])
-        # Load the scheduler model
-        scheduler.load_state_dict(checkpoint["scheduler"])
+
+        if scheduler is not None:
+            # Load the scheduler model
+            scheduler.load_state_dict(checkpoint["scheduler"])
+
+        if ema_model is not None:
+            # Load ema model state dict. Extract the fitted model weights
+            ema_model_state_dict = ema_model.state_dict()
+            ema_state_dict = {k: v for k, v in checkpoint["ema_state_dict"].items() if k in ema_model_state_dict.keys()}
+            # Overwrite the model weights to the current model (ema model)
+            ema_model_state_dict.update(ema_state_dict)
+            ema_model.load_state_dict(ema_model_state_dict)
+
+        return model, ema_model, start_epoch, best_acc1, optimizer, scheduler
     else:
         # Load model state dict. Extract the fitted model weights
         model_state_dict = model.state_dict()
@@ -86,7 +92,7 @@ def load_state_dict(
         model_state_dict.update(state_dict)
         model.load_state_dict(model_state_dict)
 
-    return model, ema_model, start_epoch, best_acc1, optimizer, scheduler
+        return model
 
 
 def make_directory(dir_path: str) -> None:
@@ -119,6 +125,8 @@ def save_checkpoint(
         file_name: str,
         samples_dir: str,
         results_dir: str,
+        best_file_name: str,
+        last_file_name: str,
         is_best: bool = False,
         is_last: bool = False,
 ) -> None:
@@ -126,9 +134,9 @@ def save_checkpoint(
     torch.save(state_dict, checkpoint_path)
 
     if is_best:
-        shutil.copyfile(checkpoint_path, os.path.join(results_dir, "best.pth.tar"))
+        shutil.copyfile(checkpoint_path, os.path.join(results_dir, best_file_name))
     if is_last:
-        shutil.copyfile(checkpoint_path, os.path.join(results_dir, "last.pth.tar"))
+        shutil.copyfile(checkpoint_path, os.path.join(results_dir, last_file_name))
 
 
 class Summary(Enum):
